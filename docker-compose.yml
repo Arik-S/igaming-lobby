@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: igaming_postgres
+    environment:
+      POSTGRES_USER: igaming
+      POSTGRES_PASSWORD: igaming123
+      POSTGRES_DB: igaming_lobby
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    container_name: igaming_backend
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: igaming
+      DB_PASSWORD: igaming123
+      DB_NAME: igaming_lobby
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+
+  frontend:
+    build: ./frontend
+    container_name: igaming_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
