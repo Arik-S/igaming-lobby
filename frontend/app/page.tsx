@@ -1,64 +1,136 @@
-import Image from "next/image";
+'use client';
+
+import { useEffect, useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { SessionRow } from '@/components/SessionRow';
+import { LobbySession, Game } from '@/lib/types';
+import { fetchSessions, reorderSessions, reorderGamesInSession } from '@/lib/api';
 
 export default function Home() {
+  const [sessions, setSessions] = useState<LobbySession[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSession, setActiveSession] = useState<number | null>(null);
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  useEffect(() => {
+    fetchSessions()
+      .then(setSessions)
+      .finally(() => setLoading(false));
+  }, []);
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Reordenar sesiones
+    const sessionIds = sessions.map((s) => s.id);
+    if (sessionIds.includes(Number(active.id)) && sessionIds.includes(Number(over.id))) {
+      const oldIndex = sessions.findIndex((s) => s.id === active.id);
+      const newIndex = sessions.findIndex((s) => s.id === over.id);
+      const newSessions = arrayMove(sessions, oldIndex, newIndex);
+      setSessions(newSessions);
+      reorderSessions(newSessions.map((s) => s.id));
+      return;
+    }
+
+    // Reordenar juegos dentro de una sesión
+    for (const session of sessions) {
+      const gameIds = session.games.map((g) => g.id);
+      if (gameIds.includes(Number(active.id)) && gameIds.includes(Number(over.id))) {
+        const oldIndex = session.games.findIndex((g) => g.id === active.id);
+        const newIndex = session.games.findIndex((g) => g.id === over.id);
+        const newGames = arrayMove(session.games, oldIndex, newIndex);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === session.id ? { ...s, games: newGames } : s
+          )
+        );
+        reorderGamesInSession(session.id, newGames.map((g) => g.id));
+        return;
+      }
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0f1923] flex items-center justify-center">
+        <div className="text-yellow-500 text-xl animate-pulse">Cargando lobby...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="min-h-screen bg-[#0f1923]">
+      {/* Header */}
+      <header className="bg-[#0a1118] border-b border-white/10 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
+            <span className="text-black font-bold text-sm">iG</span>
+          </div>
+          <span className="text-white font-bold text-xl">iGaming Lobby</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-400 text-sm">Admin Mode</span>
+          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+        </div>
+      </header>
+
+      {/* Category Tabs */}
+      <div className="bg-[#0a1118] border-b border-white/10 px-6">
+        <div className="flex gap-6 overflow-x-auto">
+          {['Salón', 'Slots', 'Live Casino', 'Crash', 'Table Games'].map((tab, i) => (
+            <button
+              key={tab}
+              className={`py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
+                i === 0
+                  ? 'border-yellow-500 text-yellow-500'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="px-6 py-8 max-w-7xl mx-auto">
+        {/* Info Banner */}
+        <div className="mb-8 bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-center gap-3">
+          <span className="text-yellow-500 text-xl">🎯</span>
+          <p className="text-yellow-200 text-sm">
+            <strong>Modo Admin:</strong> Arrastrá el ícono <strong>⠿</strong> para reordenar sesiones, y arrastrá los juegos para reordenarlos dentro de cada sesión.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Sessions with DnD */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={sessions.map((s) => s.id)}
+            strategy={verticalListSortingStrategy}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            {sessions.map((session) => (
+              <SessionRow key={session.id} session={session} />
+            ))}
+          </SortableContext>
+        </DndContext>
       </main>
     </div>
   );
