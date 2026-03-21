@@ -1,15 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  SortableContext,
-  horizontalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
 import { GameCard } from './GameCard';
 import { LobbySession } from '@/lib/types';
 
-interface Props {
-  session: LobbySession;
-}
+interface Props { session: LobbySession }
 
 export function SessionRow({ session }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
@@ -18,37 +13,28 @@ export function SessionRow({ session }: Props) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.3 : 1,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="mb-8">
-      {/* Session Header */}
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing text-gray-500 hover:text-yellow-500 transition-colors"
-          title="Arrastrar para reordenar sesión"
-        >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M7 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm6-12a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/>
+    <div ref={setNodeRef} style={{ ...style, marginBottom: 28 }}>
+      <div className="section-header">
+        <div {...attributes} {...listeners} className="drag-handle" title="Arrastrar para reordenar">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+            <circle cx="4" cy="3"  r="1.2"/><circle cx="10" cy="3"  r="1.2"/>
+            <circle cx="4" cy="7"  r="1.2"/><circle cx="10" cy="7"  r="1.2"/>
+            <circle cx="4" cy="11" r="1.2"/><circle cx="10" cy="11" r="1.2"/>
           </svg>
         </div>
-        <h2 className="text-white font-bold text-lg">{session.name}</h2>
-        <span className="text-gray-500 text-sm">({session.games.length} juegos)</span>
-        <div className="flex-1 h-px bg-white/10 ml-2" />
-        <span className="text-yellow-500 text-sm cursor-pointer hover:text-yellow-400">
-          Ver todo →
-        </span>
+        <div className="section-accent" />
+        <span className="section-title-text">{session.name}</span>
+        <span className="section-count">{session.games.length}</span>
+        <div className="section-line" />
+        <button className="section-more">Ver todo →</button>
       </div>
 
-      {/* Games Row */}
-      <SortableContext
-        items={session.games.map((g) => g.id)}
-        strategy={horizontalListSortingStrategy}
-      >
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+      <SortableContext items={session.games.map((g) => g.id)} strategy={horizontalListSortingStrategy}>
+        <div className="games-row">
           {session.games.map((game) => (
             <GameCard key={game.id} game={game} />
           ))}
